@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-global 
+global
         log /dev/log    local0
         log /dev/log    local1 notice
         chroot /var/lib/haproxy
         stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
         stats timeout 30s
-        user haproxy 
+        user haproxy
         group haproxy
         daemon
 
@@ -26,29 +26,22 @@ defaults
         option  dontlognull
         timeout connect 5000
         timeout client  50000
-        timeout server  50000 
-        errorfile 400 /etc/haproxy/errors/400.http
+        timeout server  50000
+errorfile 400 /etc/haproxy/errors/400.http
         errorfile 403 /etc/haproxy/errors/403.http
         errorfile 408 /etc/haproxy/errors/408.http
         errorfile 500 /etc/haproxy/errors/500.http
         errorfile 502 /etc/haproxy/errors/502.http
         errorfile 503 /etc/haproxy/errors/503.http
         errorfile 504 /etc/haproxy/errors/504.http
-frontend www-http
-    bind *:80
-    mode http
-    default_backend web-backend
-frontend www-https
-    bind *:443 ssl crt /etctsencrypt/live/www.globaljohn.tech/fullchain.pem
-    http-request set-header X-Forwarded-Proto https
-    acl letsencrypt-acl path_beg /.well-known/acme-challenge/
-    use_backend letsencrypt-backend if letsencrypt-acl
-    default_backend web-backend
 
-backend web-backend
-    redirect scheme https unless { ssl_fc }
-    balance roundrobin
+frontend http_front
+    bind *:443 ssl crt /etc/letsencrypt/live/www.globaljohn.tech/www.globaljohn.tech.pem
+    http-request set-header X-Forwarded-Proto http
+    http-request redirect scheme https if !{ ssl_fc }
+    use_backend http_back
+
+backend http_back
+    redirect scheme https if !{ ssl_fc }
     server 5723-web-01 54.210.176.58 check
     server 5723-web-02 23.20.123.58 check
-backend letsencrypt-backend
-   server letsencrypt 127.0.0.1:54321
